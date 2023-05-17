@@ -92,14 +92,12 @@ err:
 struct page *
 spt_find_page(struct supplemental_page_table *spt, void *va)
 {
-	struct page *temp_page = (struct page *)malloc(sizeof(struct page));
-	temp_page->va = pg_round_down(va);
+	struct page temp_page;
+	temp_page.va = pg_round_down(va);
 
-	struct hash_elem *temp_hash_elem = hash_find(&spt->table, &temp_page->hash_elem);
+	struct hash_elem *temp_hash_elem = hash_find(&spt->table, &temp_page.hash_elem);
 	if (temp_hash_elem == NULL)
 		return NULL;
-
-	free(temp_page);
 
 	return hash_entry(temp_hash_elem, struct page, hash_elem);
 }
@@ -242,6 +240,39 @@ void supplemental_page_table_init(struct supplemental_page_table *spt UNUSED)
 bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED,
 								  struct supplemental_page_table *src UNUSED)
 {
+	struct hash_iterator i;
+	struct hash *parent_hash = &(src->table);
+	hash_first(&i, parent_hash);
+	/* 해야할 것!
+	 * 1. 부모 spt를 가져온다
+	 * 2. page를 hash를 통해서 부른다 
+	 * 3. user virtual addrress에 해당하는 페이지를 할당한다 
+	 * 4. 갖고 온다 
+	 * 5. uninit이 아닌것만 
+	*/
+	while (hash_next(&i))
+	{ 
+		// parent page를 hash를 통해서 가져오기
+		struct page *parent_page = hash_entry(hash_cur(&i), struct page, hash_elem);
+		// uninit page또한 갖구 와야함
+		if (parent_page->operations->type == VM_UNINIT)
+		{
+			vm_initializer *init = parent_page->uninit.init;
+			void *aux = parent_page->uninit.aux;
+			vm_alloc_page_with_initializer(parent_page->uninit.type, parent_page->va, parent_page->writable, init, aux);
+		}
+		else
+		// 페이지를 존재하는 것을 통해 할당하기
+		{
+			vm_alloc_page(page_get_type(parent_page), parent_page->va, parent_page->writable);
+			// 페이지를 가져오기 
+			vm_claim_page(parent_page->va);
+			// 페이지에다가 덮어 씌우기
+			struct page* child_page = spt_find_page(dst, parent_page->va);
+			memcpy(child_page->frame->kva, parent_page->frame->kva, PGSIZE);
+		}
+	}
+	return true;
 }
 
 /* Free the resource hold by the supplemental page table */
@@ -249,6 +280,26 @@ void supplemental_page_table_kill(struct supplemental_page_table *spt UNUSED)
 {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
+	struct hash_iterator i;
+	struct hash *parent_hash = &(spt->table);
+	if (parent_hash == NULL)
+	{
+		return false;
+	}
+	
+	// 첫번째 hash 할당해주기
+	if (parent_hash == NULL)
+	{
+		return false;
+	}
+	
+	hash_first(&i, parent_hash);
+	while(hash_next(&i))
+	{
+		struct page *page_tobe_destroied = hash_entry(hash_cur(&i), struct page, hash_elem);
+		destroy(page_tobe_destroied);
+		hash_delete(parent_hash, hash_cur(&i));
+	}
 }
 
 /********** project 3: virtaul memory **********/

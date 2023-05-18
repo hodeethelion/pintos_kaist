@@ -907,8 +907,10 @@ lazy_load_segment(struct page *page, void *aux)
 
 	// laod segment
 	if (file_read(file_info->file, page->frame->kva, page_read_bytes) != page_read_bytes)
+	{	
+		free(file_info);
 		return false;
-
+	}
 	// setup zero bytes space
 	memset(page->frame->kva + page_read_bytes, 0, file_info->page_zero_bytes);
 
@@ -1004,6 +1006,7 @@ setup_stack(struct intr_frame *if_)
 
 	// stack pointer 설정
 	if_->rsp = USER_STACK;
+	curr->stack_bottom = stack_bottom;
 
 	return true;
 }

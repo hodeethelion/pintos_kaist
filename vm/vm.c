@@ -163,6 +163,11 @@ vm_get_frame(void)
 static void
 vm_stack_growth(void *addr UNUSED)
 {
+	uintptr_t addr_page = pg_round_down(addr);
+	vm_alloc_page(VM_ANON, addr_page, true); //page가 stack growth에 해당됨! 
+	thread_current()->stack_bottom = addr_page;
+	/* while 문으로 주어야 되는 것 아님 ? 될 때 까지? */
+
 }
 
 /* Handle the fault on write_protected page */
@@ -175,17 +180,31 @@ vm_handle_wp(struct page *page UNUSED)
 bool vm_try_handle_fault(struct intr_frame *f, void *addr, bool user, bool write, bool not_present)
 {
 	bool succ = false;
-
+	/* TODO: Validate the fault */
 	if (is_kernel_vaddr(addr) || addr == NULL)
 		return false;
 
 	struct supplemental_page_table *spt = &thread_current()->spt;
-	/* TODO: Validate the fault */
-	/* TODO: Your code goes here */
+
+	/********* stack growth setting************/
+	uintptr_t stack_limit = USER_STACK - (1<<20); 
+	//stack이 끝에서부터 자라는 것은 오케이, 2^20은 그냥 우리가 정한 어떤 값?
+	uintptr_t rsp = user ? f->rsp : thread_current()->user_rsp;
+	uintptr_t stack_bottom = thread_current()->stack_bottom;
+
+	if (addr < stack_bottom && addr >= stack_limit)
+	{
+		if (addr >= stack_bottom + PGSIZE) //이건 왜 있는 거지..
+			return false;                  //이것은 왜 있는 것인가.... 
+		vm_stack_growth(addr);		
+	}
+	
+	/* 해야할 것:스택 증가를 확인합니다. */
 	struct page *page = spt_find_page(spt, addr);
 	if (page == NULL)
 		return false;
-
+	
+	// 프레임을 할당해준다
 	succ = vm_do_claim_page(page);
 
 	return succ;

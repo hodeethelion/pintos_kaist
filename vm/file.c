@@ -163,7 +163,6 @@ static struct mmap_file *find_mmap_file(void *addr)
 	return NULL;
 }
 
-
 /* Do the munmap */
 void
 do_munmap (void *addr) 

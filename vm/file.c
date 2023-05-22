@@ -167,20 +167,43 @@ static struct mmap_file *find_mmap_file(void *addr)
 void
 do_munmap (void *addr) 
 {
+	// STEP 1. 현재 쓰레드에서 mmap file을 찾아온뒤 페이지 첫장을 잡는다
 	struct thread *curr = thread_current();
 	struct mmap_file *mmap_file = find_mmap_file(addr);
 	struct list_elem *temp_elem = list_begin(&mmap_file->page_list);
 
+	// STEP 2. list에 있는 가장 마지막 페이지에 돌 때까지
+
 	for (;temp_elem != list_tail(&mmap_file->page_list);)
 	{
+		// 페이지를 가져온뒤 
 		struct page *page = list_entry(temp_elem, struct page, mmap_elem);
 		temp_elem = temp_elem->next;
-		
+		//만약 page 테이블에 존재하지 않는 것이면 continue
 		if (pml4_get_page(curr->pml4, page->va) == NULL)
 			continue;
+		// 만약 pml4에 무엇인가 적혀져 있다면 	
+		
 		if (pml4_is_dirty(curr->pml4, page->va))
 		{
-			file_write_at(mmap_file->file, )
+			file_write_at(mmap_file->file, page->va, page->file.length, page->file.offset);
+			pml4_set_dirty(curr->pml4, page->va, 0);
 		}
+		// 페이지테이블을 해당하는 virtual address를 깨끗이 만들어준다
+		pml4_clear_page(curr->pml4, page->va);
+		// 그 후 spt table에서 이 페이지를 지워준다
+		spt_remove_page(&thread_current()->spt, page);
 	}
+	file_close(mmap_file->file);
+	list_remove(&mmap_file->elem);
+	free(mmap_file);
+	return;
+		/* 
+		 *
+		 *
+		 * 크게 이 프로세스들을 본다면 
+		 * 1. mmap file을 가져온다 
+		 * 2. 페이지가 있을 때 까지 physical allocation을 풀어준다
+		 *  
+		 */
 }

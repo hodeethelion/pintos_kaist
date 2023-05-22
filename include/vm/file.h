@@ -12,6 +12,7 @@ struct file_page
 	off_t offset;
 	uint32_t read_bytes;
 	uint32_t zero_bytes;
+	size_t length;
 };
 
 void vm_file_init(void);

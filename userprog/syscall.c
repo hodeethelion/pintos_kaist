@@ -53,6 +53,12 @@ void close(int fd);
 
 int dup2(int oldfd, int newfd);
 
+//🍊 PROJ3 MMAP and MUNMAP
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
+void munmap (void *addr);
+
+
+
 void syscall_init(void)
 {
 	sema_init(&mutex, 1);
@@ -105,6 +111,7 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	// SYS_CLOSE,		/* Close a file. */
 
 	// SYS_DUP2			/* Duplicate the file descriptor */
+	thread_current()->user_rsp = f->rsp;
 
 	switch (f->R.rax)
 	{
@@ -203,6 +210,16 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		// argv[1]: int newfd
 		f->R.rax = dup2(f->R.rdi, f->R.rsi);
 		break;
+
+	/* 🍊 proj3 : for system call mmap and munmap*/
+	case SYS_MMAP:
+		f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
+		break;
+
+	// case SYS_MUNMAP:
+	// 	munmap(f->R.rdi);
+	// 	break;
+
 	}
 }
 
@@ -464,4 +481,27 @@ int dup2(int oldfd, int newfd)
 	close(newfd);
 	curr->fdt[newfd] = f;
 	return newfd;
+}
+
+/*🍊 for project 3 */
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset)
+{
+	struct file *file = process_get_file(fd);
+
+	if (file == NULL || file == STDIN || file == STDOUT)
+	{
+		return false;
+	}
+
+	if (addr == NULL || addr + length == NULL)
+	{
+		return false;
+	}
+	
+	if (is_kernel_vaddr(addr) || is_kernel_vaddr(addr + length) || pg_ofs(addr))
+		return NULL;
+
+
+	return do_mmap(addr, length, writable, file, offset);
+
 }

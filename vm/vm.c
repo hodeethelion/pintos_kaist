@@ -190,12 +190,12 @@ bool vm_try_handle_fault(struct intr_frame *f, void *addr, bool user, bool write
 	uintptr_t stack_limit = USER_STACK - (1<<20); 
 	//stack이 끝에서부터 자라는 것은 오케이, 2^20은 그냥 우리가 정한 어떤 값?
 	uintptr_t rsp = user ? f->rsp : thread_current()->user_rsp;
-	uintptr_t stack_bottom = thread_current()->stack_bottom;
+	uintptr_t stack_bottom = pg_round_down(rsp);
 
-	if (addr < stack_bottom && addr >= stack_limit)
+	if (addr <= USER_STACK && addr >= stack_limit && addr >= rsp - 8)
 	{
-		if (addr >= stack_bottom + PGSIZE) //이건 왜 있는 거지..
-			return false;                  //이것은 왜 있는 것인가.... 
+		// if (addr >= stack_bottom + PGSIZE) //이건 왜 있는 거지..
+		// 	return false;                  //이것은 왜 있는 것인가.... 
 		vm_stack_growth(addr);		
 	}
 	
@@ -315,8 +315,8 @@ void supplemental_page_table_kill(struct supplemental_page_table *spt UNUSED)
 	hash_first(&i, parent_hash);
 	while(hash_next(&i))
 	{
-		struct page *page_tobe_destroied = hash_entry(hash_cur(&i), struct page, hash_elem);
-		destroy(page_tobe_destroied);
+		struct page *page_tobe_destroyed = hash_entry(hash_cur(&i), struct page, hash_elem);
+		destroy(page_tobe_destroyed);
 		hash_delete(parent_hash, hash_cur(&i));
 	}
 }

@@ -136,6 +136,8 @@ struct thread
 	/***************** project 3: VM **************************/
 	uintptr_t user_rsp;
 	uintptr_t stack_bottom;
+	/***************** project 3: MMAP **************************/
+	struct list mmap_list;
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */

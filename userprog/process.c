@@ -373,6 +373,9 @@ void argument_stack(int argc, char **argv, struct intr_frame *_if)
 	// rdi(첫번째 인자 register)와 rsi(두번째 인자 register)에 argc와 argv 삽입
 	_if->R.rdi = argc;
 	_if->R.rsi = _if->rsp + 8;
+
+	// 해당 interrupt frame에 rsp를 쓰레드의 user rsp에 넣어줌! 
+	thread_current()->user_rsp = _if->rsp;
 }
 
 /* Switch the current execution context to the f_name.
@@ -880,13 +883,13 @@ install_page(void *upage, void *kpage, bool writable)
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
 
-struct file_info
-{
-	struct file *file;
-	off_t ofs;
-	uint32_t page_read_bytes;
-	uint32_t page_zero_bytes;
-};
+// struct file_info
+// {
+// 	struct file *file;
+// 	off_t ofs;
+// 	uint32_t page_read_bytes;
+// 	uint32_t page_zero_bytes;
+// };
 
 static bool
 lazy_load_segment(struct page *page, void *aux)

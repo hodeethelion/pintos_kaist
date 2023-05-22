@@ -54,7 +54,7 @@ struct page
 
 	/* spt 관련  */
 	struct hash_elem hash_elem;
-
+	struct list_elem mmap_elem;
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
 	union
@@ -102,6 +102,16 @@ struct supplemental_page_table
 {
 	struct hash table;
 };
+
+/********** MMAP FILE  **********/
+struct mmap_file 
+{
+	uintptr_t addr; 
+	struct file *file;
+	struct list_elem elem;
+	struct list page_list;
+};
+
 
 #include "threads/thread.h"
 void supplemental_page_table_init(struct supplemental_page_table *spt);
